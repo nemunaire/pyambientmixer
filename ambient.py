@@ -1,12 +1,4 @@
-"""ambient.py - plays an ambient mix with pygame. Mash CTRL+C to quit.
- 
-Usage:
-  ambient.py <file>
- 
-Options:
-  <file>             XML file of the ambient mix to play. Make sure you have the correct "sounds/" folder in your current working directory.
-  -h --help          Show this help message.
-
+"""plays an ambient mix with pygame. Mash CTRL+C to quit.
 """
 __author__      = "Philooz"
 __copyright__   = "2017 GPL"
@@ -148,7 +140,13 @@ def bootstrap_chanlist(chans_to_load):
 		for channel in channels:
 			channel.tick()
 
-from docopt import docopt
 if __name__ == "__main__":
-	arguments = docopt(__doc__, version = '0.1ß')
-	bootstrap_chanlist(load_file(arguments.get('<file>')))
+	import argparse
+	parser = argparse.ArgumentParser(description=__doc__)
+
+	parser.add_argument('file',
+			    help="XML file of the ambient mix to play. Make sure you have the correct \"sounds/\" folder in your current working directory.")
+
+	args = parser.parse_args()
+
+	bootstrap_chanlist(load_file(args.file))
