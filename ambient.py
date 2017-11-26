@@ -69,18 +69,18 @@ class Channel():
 		val = unit_duration_map[self.random_unit]
 		self.play_at = random.expovariate(self.random_counter/val)
 
-	def play(self, force = False):
-		if(not self.random and not self.mute):
-			self.channel_object.play(self.sound_object, loops = -1)
-		if(force):
-			self.channel_object.play(self.sound_object)
+	def play_once(self):
+		self.channel_object.play(self.sound_object)
+
+	def play_loop(self):
+		self.channel_object.play(self.sound_object, loops=-1)
 
 	def tick(self):
 		if(self.random and not self.mute):
 			self.current_tick += 1
 			if(self.play_at is None or self.current_tick > self.play_at):
 				if(self.play_at is not None):
-					self.play(True)
+					self.play_once()
 				self.current_tick = 0
 				self.compute_next_ticks()
 				#print("Recomputed : {}".format(self.play_at))
@@ -109,7 +109,8 @@ def load_file(xml_file):
 def bootstrap_chanlist(channels):
 	for channel in channels:
 		print('Loaded {}.'.format(channel))
-		channel.play()
+		if not channel.random and not channel.mute:
+			channel.play_loop()
 	print('Press CTRL+C to exit.')
 	while True:
 		clock.tick(CLOCK_TICKER)
