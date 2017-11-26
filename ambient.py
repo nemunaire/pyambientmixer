@@ -87,29 +87,28 @@ class Channel():
 
 def load_file(xml_file):
 	obj = untangle.parse(xml_file)
-	ls = []
-	for chan_num in range(1,9):
-		channel = getattr(obj.audio_template, "channel{}".format(chan_num))
-		dic = {}
-		dic["sound_id"] = channel.id_audio.cdata
-		dic["random"] = (channel.random.cdata == "true")
-		dic["mute"] = (channel.mute.cdata == "true")
-		dic["name"] = channel.name_audio.cdata
-		dic["volume"] = channel.volume.cdata
-		dic["balance"] = int(channel.balance.cdata)
-		dic["random_counter"] = int(channel.random_counter.cdata)
-		dic["random_unit"] = channel.random_unit.cdata
-		ls.append(dic)
-	return ls
-
-def bootstrap_chanlist(chans_to_load):
 	channels = []
-	for(c_id, c_val) in enumerate(chans_to_load):
-		if c_val["sound_id"] not in ('','0'):
-			channels.append(Channel(c_id, **c_val))
+	for channel in obj.audio_template.get_elements():
+		if channel._name[:7] == "channel" and channel.id_audio.cdata not in ("", "0"):
+			channel_id = int(channel._name[7:]) - 1
+			channels.append(
+				Channel(
+					channel_id,
+					channel.id_audio.cdata,
+					name=channel.name_audio.cdata,
+					volume=channel.volume.cdata,
+					random=channel.random.cdata == "true",
+					random_counter=int(channel.random_counter.cdata),
+					random_unit=channel.random_unit.cdata,
+					mute=channel.mute.cdata == "true",
+					balance=int(channel.balance.cdata),
+				)
+			)
+	return channels
+
+def bootstrap_chanlist(channels):
 	for channel in channels:
 		print('Loaded {}.'.format(channel))
-	for channel in channels:
 		channel.play()
 	print('Press CTRL+C to exit.')
 	while True:
