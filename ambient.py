@@ -20,23 +20,6 @@ unit_duration_map = {
 	'1h': 3600*CLOCK_TICKER
 }
 
-def chop_interval(num, prec, max, len):
-	values = []
-	num += 1
-	for i in range(num):
-		values.append(random.randint(0, prec))
-	norm = sum(values)
-	anc = 0
-	max_ar = max - 1.5*len*num
-	for i in range(num):
-		old = values[i]
-		values[i] += anc
-		anc += old
-		values[i] /= norm
-		values[i] *= max_ar+i*1.5*len
-		values[i] = int(values[i])
-	return values
-
 class Channel():
 	def __init__(self, channel_id, sound_id, name = "", volume = 100, random = False, random_counter = 1, random_unit = "1h", mute = False, balance = 0):
 		try:
@@ -60,10 +43,10 @@ class Channel():
 		self.random = random
 		self.random_counter = random_counter
 		self.random_unit = random_unit
-		self.play_at = []
+		self.play_at = None
 		self.current_tick = 0
 		self.mute = mute
-	
+
 	def __repr__(self):
 		if(self.random):
 			return "Channel {channel_id} : {name} (random {ran} per {unit}), {sound_id}.ogg (volume {vol}, balance {bal})".format(
@@ -84,8 +67,7 @@ class Channel():
 
 	def compute_next_ticks(self):
 		val = unit_duration_map[self.random_unit]
-		sound_len = self.sound_object.get_length()*1.5
-		self.play_at = chop_interval(self.random_counter, 100, val, sound_len)
+		self.play_at = random.expovariate(self.random_counter/val)
 
 	def play(self, force = False):
 		if(not self.random and not self.mute):
@@ -95,15 +77,10 @@ class Channel():
 
 	def tick(self):
 		if(self.random and not self.mute):
-			if(len(self.play_at) > 0):
-				self.current_tick += 1
-				ref = self.play_at[0]
-				if(self.current_tick > ref):
-					#print("Playing : {}".format(self.play_at))
-					self.play_at.pop(0)
-					if(len(self.play_at) >= 1):
-						self.play(True)
-			else:
+			self.current_tick += 1
+			if(self.play_at is None or self.current_tick > self.play_at):
+				if(self.play_at is not None):
+					self.play(True)
 				self.current_tick = 0
 				self.compute_next_ticks()
 				#print("Recomputed : {}".format(self.play_at))
