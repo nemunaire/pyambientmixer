@@ -3,21 +3,18 @@
 __author__      = "Philooz"
 __copyright__   = "2017 GPL"
 
+import asyncio
 import random, sys
 import pygame, untangle
 
+loop = asyncio.get_event_loop()
 pygame.mixer.init()
 pygame.mixer.pre_init(44100, -16, 2, 2048)
-pygame.init()
-
-clock = pygame.time.Clock()
-
-CLOCK_TICKER = 10
 
 unit_duration_map = {
-	'1m': 60*CLOCK_TICKER,
-	'10m': 600*CLOCK_TICKER,
-	'1h': 3600*CLOCK_TICKER
+	'1m': 60,
+	'10m': 600,
+	'1h': 3600
 }
 
 class Channel():
@@ -43,8 +40,6 @@ class Channel():
 		self.random = random
 		self.random_counter = random_counter
 		self.random_unit = random_unit
-		self.play_at = None
-		self.current_tick = 0
 		self.mute = mute
 
 	def __repr__(self):
@@ -65,25 +60,15 @@ class Channel():
 			vol=self.volume,
 			bal=self.balance)
 
-	def compute_next_ticks(self):
-		val = unit_duration_map[self.random_unit]
-		self.play_at = random.expovariate(self.random_counter/val)
+	@property
+	def next_tick(self):
+		return random.expovariate(self.random_counter/unit_duration_map[self.random_unit])
 
 	def play_once(self):
 		self.channel_object.play(self.sound_object)
 
 	def play_loop(self):
 		self.channel_object.play(self.sound_object, loops=-1)
-
-	def tick(self):
-		if(self.random and not self.mute):
-			self.current_tick += 1
-			if(self.play_at is None or self.current_tick > self.play_at):
-				if(self.play_at is not None):
-					self.play_once()
-				self.current_tick = 0
-				self.compute_next_ticks()
-				#print("Recomputed : {}".format(self.play_at))
 
 def load_file(xml_file):
 	obj = untangle.parse(xml_file)
@@ -106,16 +91,23 @@ def load_file(xml_file):
 			)
 	return channels
 
-def bootstrap_chanlist(channels):
+def run(channels):
 	for channel in channels:
 		print('Loaded {}.'.format(channel))
 		if not channel.random and not channel.mute:
 			channel.play_loop()
+		else:
+			def play(channel):
+                                loop.call_later(channel.next_tick, play, channel)
+                                channel.play_once()
+			loop.call_later(channel.next_tick, play, channel)
+
 	print('Press CTRL+C to exit.')
-	while True:
-		clock.tick(CLOCK_TICKER)
-		for channel in channels:
-			channel.tick()
+
+	try:
+		loop.run_forever()
+	finally:
+		loop.close()
 
 if __name__ == "__main__":
 	import argparse
@@ -126,4 +118,4 @@ if __name__ == "__main__":
 
 	args = parser.parse_args()
 
-	bootstrap_chanlist(load_file(args.file))
+	run(load_file(args.file))
